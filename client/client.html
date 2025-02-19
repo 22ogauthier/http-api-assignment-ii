@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <title>Our simple HTTP server</title>
   <link rel="stylesheet" type="text/css" href="/style.css">
-  
+
   <script>
 
   </script>
 </head>
+
 <body>
   <section id="top">
     <h3>POST Status Code Tests</h3>
@@ -15,7 +17,7 @@
       <label for="name">Name: </label>
       <input id="nameField" type="text" name="name" />
       <label for="age">Age: </label>
-      <input id="ageField" type="number" name="age" min="0" max="100" step="1"/>
+      <input id="ageField" type="number" name="age" min="0" max="100" step="1" />
       <input type="submit" value="Add User" />
     </form>
     <form id="userForm" action="/getUsers" method="get">
@@ -33,4 +35,119 @@
   <section id="content">
   </section>
 </body>
+
+<script>
+  const handleResponse = async (response, postRequest, getRequest) => {
+    const content = document.getElementById('content');
+
+    //Based on the status code we got back from the server, display something.
+    switch (response.status) {
+      case 200: //Success
+        content.innerHTML = `<b>Success</b>`;
+        break;
+      case 201: //Created
+        content.innerHTML = `<b>Created</b>`;
+        break;
+      case 204: //Updated
+        content.innerHTML = `<b>Updated (No Content)</b>`;
+        break;
+      case 400: //Bad request
+        content.innerHTML = `<b>Bad Request</b>`;
+        break;
+      case 404: //Not Found
+        content.innerHTML = `<b>Not Found</b>`;
+        break;
+      default: //Anything Else
+        content.innerHTML = `<p>Status Code not Implemented By Client</p>`;
+        break;
+    }
+
+    if (postRequest) {
+      if (response.status === 201 || response.status === 400) {
+        let obj = await response.json();
+        console.log("obj: ", obj);
+        content.innerHTML += `<br><p>${obj.message}</p></br>`;
+      }
+    }
+
+    //If we should parse a response (meaning we made a get request)
+    if (getRequest) {
+      //Parse the response to json. This is an async function, so we will await it.
+      let obj = await response.json();
+
+      if (obj.message) {
+        console.log("obj: ", obj);
+        content.innerHTML += `<br><p>${obj.message}</p></br>`;
+        //To display the data easily, we will just stringify it again and display it.
+      } else {
+        console.log("obj: ", obj);
+        let jsonString = JSON.stringify(obj.users);
+        content.innerHTML += `<br><p>${jsonString}</p></br>`;
+      }
+    }
+  };
+
+  //function to send request. This is marked as async since we will use await.
+  const requestUpdate = async (userForm) => {
+
+    //Grab the url and method from the html form below
+    const url = userForm.querySelector('#urlField').value;
+    const method = userForm.querySelector('#methodSelect').value;
+
+    //Await our fetch response. Go to the URL, use the right method, and attach the headers.
+    let response = await fetch(url, {
+      method,
+      headers: {
+        'Accept': 'application/json'
+      },
+    });
+    handleResponse(response, false, method === 'get');
+  };
+
+  const sendPost = async (nameForm) => {
+    const url = nameForm.getAttribute('action');
+    const method = nameForm.getAttribute('method');
+
+    const nameField = nameForm.querySelector('#nameField');
+    const ageField = nameForm.querySelector('#ageField');
+
+    const formData = `name=${nameField.value}&age=${ageField.value}`;
+
+    let response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+
+    handleResponse(response, true, false);
+  };
+
+  const init = () => {
+    const userForm = document.querySelector('#userForm');
+    const nameForm = document.querySelector('#nameForm');
+
+    //function to handle our request. In this case, it also cancels the built in html form action
+    const getUsers = (e) => {
+      e.preventDefault();
+      requestUpdate(userForm);
+      return false;
+    }
+
+    const addUser = (e) => {
+      e.preventDefault();
+      sendPost(nameForm);
+      return false;
+    }
+
+    userForm.addEventListener('submit', getUsers);
+    nameForm.addEventListener('submit', addUser);
+  };
+
+  window.onload = init;
+
+</script>
+
 </html>
